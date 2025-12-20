@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface CombinedAnalytics {
@@ -30,8 +30,8 @@ interface CombinedAnalytics {
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<CombinedAnalytics | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null); // Start with no filter
+  const [selectedYear, setSelectedYear] = useState<number | null>(null); // Start with no filter
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,15 +51,18 @@ export default function AnalyticsPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            month: selectedMonth,
-            year: selectedYear,
+            month: selectedMonth, // Will be null for "All Months"
+            year: selectedYear, // Will be null for "All Years"
             employee: 'ALL_EMPLOYEES',
             data: JSON.parse(storedData)
           })
         });
       } else {
         // Fallback to GET request (will show mock data)
-        response = await fetch(`/api/analytics?month=${selectedMonth}&year=${selectedYear}&employee=ALL_EMPLOYEES`);
+        const params = new URLSearchParams({ employee: 'ALL_EMPLOYEES' });
+        if (selectedMonth) params.append('month', selectedMonth.toString());
+        if (selectedYear) params.append('year', selectedYear.toString());
+        response = await fetch(`/api/analytics?${params}`);
       }
       
       const data = await response.json();
@@ -73,6 +76,11 @@ export default function AnalyticsPage() {
       setLoading(false);
     }
   };
+
+  // Auto-load analytics when component mounts
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -96,10 +104,11 @@ export default function AnalyticsPage() {
                 </label>
                 <select
                   id="month"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  value={selectedMonth || ''}
+                  onChange={(e) => setSelectedMonth(e.target.value ? parseInt(e.target.value) : null)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
+                  <option value="">All Months</option>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                     <option key={month} value={month}>
                       {new Date(0, month - 1).toLocaleString('default', { month: 'long' })}
@@ -114,10 +123,11 @@ export default function AnalyticsPage() {
                 </label>
                 <select
                   id="year"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  value={selectedYear || ''}
+                  onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
+                  <option value="">All Years</option>
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
                     <option key={year} value={year}>
                       {year}

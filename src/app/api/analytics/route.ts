@@ -55,7 +55,7 @@ const mockAllEmployeesAnalytics = {
   totalWorkedHours: 315.8,
   leavesUsed: 3,
   productivityPercentage: 92.9,
-  employeeCount: 2,
+  employeeCount: mockEmployees.length, // Dynamic count based on mock employees
   employeeRecords: [
     {
       employeeName: 'John Doe',
@@ -164,35 +164,35 @@ const mockAllEmployeesAnalytics = {
       totalWorkedHours: 17.0,
       totalExpectedHours: 17.0,
       employeesPresent: 2,
-      totalEmployees: 2
+      totalEmployees: mockEmployees.length
     },
     {
       date: '2024-01-02',
       totalWorkedHours: 16.75,
       totalExpectedHours: 17.0,
       employeesPresent: 2,
-      totalEmployees: 2
+      totalEmployees: mockEmployees.length
     },
     {
       date: '2024-01-03',
       totalWorkedHours: 16.3,
       totalExpectedHours: 17.0,
       employeesPresent: 2,
-      totalEmployees: 2
+      totalEmployees: mockEmployees.length
     },
     {
       date: '2024-01-04',
       totalWorkedHours: 0,
       totalExpectedHours: 8.5,
       employeesPresent: 0,
-      totalEmployees: 2
+      totalEmployees: mockEmployees.length
     },
     {
       date: '2024-01-05',
       totalWorkedHours: 8.6,
       totalExpectedHours: 17.0,
       employeesPresent: 1,
-      totalEmployees: 2
+      totalEmployees: mockEmployees.length
     }
   ]
 };
@@ -227,9 +227,21 @@ export async function GET(request: NextRequest) {
         return recordDate.getMonth() + 1 === parseInt(month) && 
                recordDate.getFullYear() === parseInt(year);
       });
+    } else if (month) {
+      filteredData = storedData.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate.getMonth() + 1 === parseInt(month);
+      });
+    } else if (year) {
+      filteredData = storedData.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate.getFullYear() === parseInt(year);
+      });
     }
+    // If no month/year provided, use all data
 
     // Calculate analytics from real data
+    const allEmployees = new Set(storedData.map(record => record.employeeName)); // Total employees across all data
     const totalExpectedHours = filteredData.reduce((sum, record) => sum + record.expectedHours, 0);
     const totalWorkedHours = filteredData.reduce((sum, record) => sum + record.workedHours, 0);
     const leavesUsed = filteredData.filter(record => record.isLeave).length;
@@ -246,7 +258,7 @@ export async function GET(request: NextRequest) {
             totalWorkedHours: 0,
             totalExpectedHours: 0,
             employeesPresent: 0,
-            totalEmployees: employeeCount,
+            totalEmployees: allEmployees.size, // Use total unique employees from all data
             presentEmployees: new Set()
           };
         }
@@ -271,7 +283,7 @@ export async function GET(request: NextRequest) {
       totalWorkedHours,
       leavesUsed,
       productivityPercentage,
-      employeeCount,
+      employeeCount: allEmployees.size, // Use total unique employees from all data
       employeeRecords: filteredData,
       dailyBreakdown
     };
@@ -300,16 +312,28 @@ export async function POST(request: NextRequest) {
       if (month && year) {
         filteredData = data.filter((record: any) => {
           const recordDate = new Date(record.date);
-          return recordDate.getMonth() + 1 === parseInt(month) && 
-                 recordDate.getFullYear() === parseInt(year);
+          return recordDate.getMonth() + 1 === parseInt(month.toString()) && 
+                 recordDate.getFullYear() === parseInt(year.toString());
+        });
+      } else if (month) {
+        filteredData = data.filter((record: any) => {
+          const recordDate = new Date(record.date);
+          return recordDate.getMonth() + 1 === parseInt(month.toString());
+        });
+      } else if (year) {
+        filteredData = data.filter((record: any) => {
+          const recordDate = new Date(record.date);
+          return recordDate.getFullYear() === parseInt(year.toString());
         });
       }
+      // If no month/year provided, use all data
 
       // Calculate analytics from real data
       const totalExpectedHours = filteredData.reduce((sum: number, record: any) => sum + record.expectedHours, 0);
       const totalWorkedHours = filteredData.reduce((sum: number, record: any) => sum + record.workedHours, 0);
       const leavesUsed = filteredData.filter((record: any) => record.isLeave).length;
       const productivityPercentage = totalExpectedHours > 0 ? (totalWorkedHours / totalExpectedHours) * 100 : 0;
+      const allEmployees = new Set(data.map((record: any) => record.employeeName)); // Total employees across all data
       const employeeCount = new Set(filteredData.map((record: any) => record.employeeName)).size;
 
       // Create daily breakdown
@@ -322,7 +346,7 @@ export async function POST(request: NextRequest) {
               totalWorkedHours: 0,
               totalExpectedHours: 0,
               employeesPresent: 0,
-              totalEmployees: employeeCount,
+              totalEmployees: allEmployees.size, // Use total unique employees from all data
               presentEmployees: new Set()
             };
           }
@@ -347,7 +371,7 @@ export async function POST(request: NextRequest) {
         totalWorkedHours,
         leavesUsed,
         productivityPercentage,
-        employeeCount,
+        employeeCount: allEmployees.size, // Use total unique employees from all data
         employeeRecords: filteredData,
         dailyBreakdown
       };
