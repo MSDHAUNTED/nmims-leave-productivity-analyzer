@@ -195,10 +195,6 @@ This project is created for NMIMS Intern Technical Assignment.
 
 ## 👨‍💻 Author
 
-Built with ❤️ for NMIMS Technical Assignment
+Built By Gaurav Sonigra (B.Tech IT)
 
-**Note**: The current version includes all frontend functionality and API structure. Database integration is ready but disabled to prevent Turbopack crashes. The application demonstrates complete UI/UX flow with mock data for testing purposes.
 
----
-
-For any questions or issues, please create an issue in the repository.
