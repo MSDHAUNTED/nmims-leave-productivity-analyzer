@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { attendanceStore } from '@/lib/attendance-store';
 
 // Mock data for testing without database
 const mockEmployees = [
@@ -207,21 +208,72 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Employee name is required' }, { status: 400 });
     }
 
-    // Handle "All Employees" option
-    if (employeeName === 'ALL_EMPLOYEES') {
-      const allEmployeesAnalytics = {
-        ...mockAllEmployeesAnalytics,
-        employeeName: 'All Employees',
-        employeeCount: 2
-      };
-      return NextResponse.json(allEmployeesAnalytics);
+    // Get stored attendance data
+    const storedData = attendanceStore.getData();
+    
+    // If no data uploaded, return mock data
+    if (storedData.length === 0) {
+      if (employeeName === 'ALL_EMPLOYEES') {
+        return NextResponse.json(mockAllEmployeesAnalytics);
+      }
+      return NextResponse.json({ ...mockAnalytics, employeeName });
     }
 
-    // For individual employees, return mock analytics data
-    // TODO: Replace with real database queries when MongoDB is configured
+    // Filter data by month/year if provided
+    let filteredData = storedData;
+    if (month && year) {
+      filteredData = storedData.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate.getMonth() + 1 === parseInt(month) && 
+               recordDate.getFullYear() === parseInt(year);
+      });
+    }
+
+    // Calculate analytics from real data
+    const totalExpectedHours = filteredData.reduce((sum, record) => sum + record.expectedHours, 0);
+    const totalWorkedHours = filteredData.reduce((sum, record) => sum + record.workedHours, 0);
+    const leavesUsed = filteredData.filter(record => record.isLeave).length;
+    const productivityPercentage = totalExpectedHours > 0 ? (totalWorkedHours / totalExpectedHours) * 100 : 0;
+    const employeeCount = new Set(filteredData.map(record => record.employeeName)).size;
+
+    // Create daily breakdown
+    const dailyBreakdown = Object.values(
+      filteredData.reduce((acc: any, record) => {
+        const dateKey = record.date;
+        if (!acc[dateKey]) {
+          acc[dateKey] = {
+            date: dateKey,
+            totalWorkedHours: 0,
+            totalExpectedHours: 0,
+            employeesPresent: 0,
+            totalEmployees: employeeCount,
+            presentEmployees: new Set()
+          };
+        }
+        acc[dateKey].totalWorkedHours += record.workedHours;
+        acc[dateKey].totalExpectedHours += record.expectedHours;
+        if (!record.isLeave) {
+          acc[dateKey].presentEmployees.add(record.employeeName);
+        }
+        return acc;
+      }, {})
+    ).map((day: any) => ({
+      date: day.date,
+      totalWorkedHours: day.totalWorkedHours,
+      totalExpectedHours: day.totalExpectedHours,
+      employeesPresent: day.presentEmployees.size,
+      totalEmployees: day.totalEmployees
+    }));
+
     const analytics = {
-      ...mockAnalytics,
-      employeeName: employeeName
+      employeeName: 'All Employees',
+      totalExpectedHours,
+      totalWorkedHours,
+      leavesUsed,
+      productivityPercentage,
+      employeeCount,
+      employeeRecords: filteredData,
+      dailyBreakdown
     };
 
     return NextResponse.json(analytics);
@@ -237,8 +289,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Return mock employees for testing
-    // TODO: Replace with real database query when MongoDB is configured
+    // Return employees from stored data if available
+    const storedData = attendanceStore.getData();
+    if (storedData.length > 0) {
+      const employees = attendanceStore.getEmployees().map((name, index) => ({
+        id: (index + 1).toString(),
+        name: name
+      }));
+      return NextResponse.json(employees);
+    }
+    
+    // Return mock employees if no data uploaded
     return NextResponse.json(mockEmployees);
 
   } catch (error) {

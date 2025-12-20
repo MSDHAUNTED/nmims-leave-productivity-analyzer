@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import { attendanceStore } from '@/lib/attendance-store';
+import { processAttendanceData } from '@/lib/attendance-utils';
 
 interface AttendanceData {
   employeeName: string;
@@ -55,6 +57,24 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    // Process attendance data with business logic
+    const processedRecords = attendanceData.map(record => {
+      const processedRecord = processAttendanceData([record])[0];
+      return {
+        employeeName: processedRecord.employee,
+        date: processedRecord.date.toISOString().split('T')[0], // Convert to string
+        inTime: processedRecord.inTime ? processedRecord.inTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null,
+        outTime: processedRecord.outTime ? processedRecord.outTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null,
+        workedHours: processedRecord.workedHours,
+        expectedHours: processedRecord.expectedHours,
+        isLeave: processedRecord.isLeave,
+        productivity: processedRecord.expectedHours > 0 ? (processedRecord.workedHours / processedRecord.expectedHours) * 100 : 0
+      };
+    });
+
+    // Store processed data in memory for analytics
+    attendanceStore.setData(processedRecords);
+    
     // For now, just simulate processing without database
     // TODO: Add database storage when MongoDB is configured
     const employees = [...new Set(attendanceData.map((r: any) => r.employeeName))];
@@ -63,7 +83,8 @@ export async function POST(request: NextRequest) {
       message: 'File processed successfully',
       recordsProcessed: attendanceData.length,
       employees: employees.length,
-      data: attendanceData // Include processed data for testing
+      employeeNames: employees,
+      data: processedRecords // Include processed data for testing
     });
 
   } catch (error) {
