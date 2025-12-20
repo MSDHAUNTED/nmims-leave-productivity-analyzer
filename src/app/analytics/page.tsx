@@ -9,6 +9,16 @@ interface CombinedAnalytics {
   leavesUsed: number;
   productivityPercentage: number;
   employeeCount: number;
+  employeeRecords: Array<{
+    employeeName: string;
+    date: string;
+    inTime: string | null;
+    outTime: string | null;
+    workedHours: number;
+    expectedHours: number;
+    isLeave: boolean;
+    productivity: number;
+  }>;
   dailyBreakdown: Array<{
     date: string;
     totalWorkedHours: number;
@@ -165,6 +175,106 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Employee Records Table */}
+              {analytics.employeeRecords && analytics.employeeRecords.length > 0 && (
+                <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-6">Employee Attendance Records</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Employee Name
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            In Time
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Out Time
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Worked Hours
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Expected Hours
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Productivity
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {analytics.employeeRecords.map((record, index) => (
+                          <tr key={index} className={`hover:bg-gray-50 ${record.isLeave ? 'bg-red-50' : ''}`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {record.employeeName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(record.date).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.inTime || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.outTime || '-'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.isLeave ? '-' : `${record.workedHours.toFixed(1)}h`}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.expectedHours.toFixed(1)}h
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {record.isLeave ? (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                  Leave
+                                </span>
+                              ) : (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                  Present
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {record.isLeave ? '-' : (
+                                <span className={`font-medium ${
+                                  record.productivity >= 90 ? 'text-green-600' :
+                                  record.productivity >= 75 ? 'text-yellow-600' : 'text-red-600'
+                                }`}>
+                                  {record.productivity.toFixed(1)}%
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Table Summary */}
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div className="text-center">
+                      <span className="font-medium">Total Records:</span> {analytics.employeeRecords.length}
+                    </div>
+                    <div className="text-center">
+                      <span className="font-medium">Present Days:</span> {analytics.employeeRecords.filter(r => !r.isLeave).length}
+                    </div>
+                    <div className="text-center">
+                      <span className="font-medium">Leave Days:</span> {analytics.employeeRecords.filter(r => r.isLeave).length}
+                    </div>
+                    <div className="text-center">
+                      <span className="font-medium">Avg Attendance:</span> {(analytics.employeeRecords.filter(r => !r.isLeave).length / analytics.employeeRecords.length * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-blue-900 mb-2">How to Use</h3>
