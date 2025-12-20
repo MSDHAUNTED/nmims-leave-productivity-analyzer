@@ -41,6 +41,13 @@ export default function Home() {
         throw new Error(result.error || 'Upload failed');
       }
 
+      // Store the processed data in localStorage for analytics
+      if (result.data && result.data.length > 0) {
+        localStorage.setItem('attendanceData', JSON.stringify(result.data));
+        localStorage.setItem('uploadTimestamp', new Date().toISOString());
+        console.log('Stored data for', result.employees, 'employees:', result.data);
+      }
+
       setUploadResult(result);
       setFile(null);
       // Reset file input
@@ -125,6 +132,11 @@ export default function Home() {
                 <p className="text-green-700">
                   Processed {uploadResult.recordsProcessed} records for {uploadResult.employees} employees.
                 </p>
+                {uploadResult.employeeNames && (
+                  <p className="text-green-600 mt-2 text-sm">
+                    <strong>Employees:</strong> {uploadResult.employeeNames.join(', ')}
+                  </p>
+                )}
                 <button
                   onClick={navigateToAnalytics}
                   className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"

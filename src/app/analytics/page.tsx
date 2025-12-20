@@ -39,7 +39,29 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/analytics?month=${selectedMonth}&year=${selectedYear}&employee=ALL_EMPLOYEES`);
+      // Get stored attendance data from localStorage
+      const storedData = localStorage.getItem('attendanceData');
+      
+      let response;
+      if (storedData) {
+        // Send stored data to analytics API
+        response = await fetch('/api/analytics', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            month: selectedMonth,
+            year: selectedYear,
+            employee: 'ALL_EMPLOYEES',
+            data: JSON.parse(storedData)
+          })
+        });
+      } else {
+        // Fallback to GET request (will show mock data)
+        response = await fetch(`/api/analytics?month=${selectedMonth}&year=${selectedYear}&employee=ALL_EMPLOYEES`);
+      }
+      
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load analytics');

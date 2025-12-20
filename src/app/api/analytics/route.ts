@@ -289,7 +289,73 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Return employees from stored data if available
+    const body = await request.json();
+    
+    // Check if this is analytics request with data
+    if (body.data && Array.isArray(body.data)) {
+      const { month, year, data } = body;
+      
+      // Filter data by month/year if provided
+      let filteredData = data;
+      if (month && year) {
+        filteredData = data.filter((record: any) => {
+          const recordDate = new Date(record.date);
+          return recordDate.getMonth() + 1 === parseInt(month) && 
+                 recordDate.getFullYear() === parseInt(year);
+        });
+      }
+
+      // Calculate analytics from real data
+      const totalExpectedHours = filteredData.reduce((sum: number, record: any) => sum + record.expectedHours, 0);
+      const totalWorkedHours = filteredData.reduce((sum: number, record: any) => sum + record.workedHours, 0);
+      const leavesUsed = filteredData.filter((record: any) => record.isLeave).length;
+      const productivityPercentage = totalExpectedHours > 0 ? (totalWorkedHours / totalExpectedHours) * 100 : 0;
+      const employeeCount = new Set(filteredData.map((record: any) => record.employeeName)).size;
+
+      // Create daily breakdown
+      const dailyBreakdown = Object.values(
+        filteredData.reduce((acc: any, record: any) => {
+          const dateKey = record.date;
+          if (!acc[dateKey]) {
+            acc[dateKey] = {
+              date: dateKey,
+              totalWorkedHours: 0,
+              totalExpectedHours: 0,
+              employeesPresent: 0,
+              totalEmployees: employeeCount,
+              presentEmployees: new Set()
+            };
+          }
+          acc[dateKey].totalWorkedHours += record.workedHours;
+          acc[dateKey].totalExpectedHours += record.expectedHours;
+          if (!record.isLeave) {
+            acc[dateKey].presentEmployees.add(record.employeeName);
+          }
+          return acc;
+        }, {})
+      ).map((day: any) => ({
+        date: day.date,
+        totalWorkedHours: day.totalWorkedHours,
+        totalExpectedHours: day.totalExpectedHours,
+        employeesPresent: day.presentEmployees.size,
+        totalEmployees: day.totalEmployees
+      }));
+
+      const analytics = {
+        employeeName: 'All Employees',
+        totalExpectedHours,
+        totalWorkedHours,
+        leavesUsed,
+        productivityPercentage,
+        employeeCount,
+        employeeRecords: filteredData,
+        dailyBreakdown
+      };
+
+      return NextResponse.json(analytics);
+    }
+    
+    // Return employees from stored data if available (original POST functionality)
     const storedData = attendanceStore.getData();
     if (storedData.length > 0) {
       const employees = attendanceStore.getEmployees().map((name, index) => ({
@@ -303,7 +369,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(mockEmployees);
 
   } catch (error) {
-    console.error('Error fetching employees:', error);
+    console.error('Error in POST analytics:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
