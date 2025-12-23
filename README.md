@@ -2,7 +2,7 @@
 
 A full-stack web application built with Next.js that analyzes employee attendance, leave usage, and productivity based on uploaded Excel attendance sheets.
 Live demo :https://leave-productivity-analyzer-seven.vercel.app/
-## 🚀 Features
+## 🚀 Features 
 
 - **Excel File Upload**: Accept .xlsx files with employee attendance data
 - **Data Processing**: Parse Excel, calculate worked hours, identify leaves, store in database
